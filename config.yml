@@ -1,0 +1,25 @@
+appName: JiraMetricsEazybi
+
+Report_URL: https://aod.eazybi.com/accounts/70597/export/report/1075725-api-export.csv?embed_token=iid25hgzq92p8km005mmfz62q3cqchs58tbeudl24wi4dd64nsrsdcnnxapi
+
+# Cycletime
+# Percentiles - that the script should return
+# NOTE: for now cycletime percentiles and montecarlo percentiles should match
+Cycletime:
+    Percentiles:
+        - 50
+        - 85
+        - 95
+
+# Simulations - how many simulations we should run 10k should give you a good result
+# Source - Which Throughput/day we should use to run the simulation, must be Story, Bug, Task or Throughput (sum of all 3)
+# Percentiles - that the script should return, the script will return the nearest neighbor result
+# NOTE: for now cycletime percentiles and montecarlo percentiles should match
+# Simulation Days - Quantity of days to be added as a parameter of the simulation
+Montecarlo:
+    Simulations: 10000
+    Percentiles:
+        - 50
+        - 85
+        - 95
+    Simulation_days: 14
