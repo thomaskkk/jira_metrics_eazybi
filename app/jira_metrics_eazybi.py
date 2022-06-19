@@ -69,6 +69,66 @@ def calc_throughput(kanban_data, start_date=None, end_date=None):
         return throughput
 
 
+def simulate_montecarlo(throughput, sources=None, simul=None, simul_days=None):
+    """
+    Simulate Monte Carlo
+
+    Parameters
+    ----------
+        throughput : dataFrame
+            throughput base values of the simulation
+        sources : dictionary
+            sources that the simulations should run on
+        simul : integer
+            number of simulations
+        simul_days : integer
+            days to run the simulation
+    """
+    if sources is None:
+        sources = cfg['Montecarlo']['Source'].get()
+    if simul is None:
+        simul = cfg['Montecarlo']['Simulations'].get()
+    if simul_days is None:
+        simul_days = calc_simul_days()
+    mc = {}
+    for source in sources:
+        mc[source] = run_simulation(throughput, source, simul, simul_days)
+    return mc
+
+
+def run_simulation(throughput, source, simul, simul_days):
+    """Run monte carlo simulation with the result of how many itens will
+    be delivered in a set of days """
+
+    if (throughput is not None and source in throughput.columns):
+        dataset = throughput[[source]].reset_index(drop=True) 
+        samples = [getattr(dataset.sample(
+            n=simul_days, replace=True
+        ).sum(), source) for i in range(simul)]
+        samples = pd.DataFrame(samples, columns=['Items'])
+        distribution = samples.groupby(['Items']).size().reset_index(
+            name='Frequency'
+        )
+        distribution = distribution.sort_index(ascending=False)
+        distribution['Probability'] = (
+                100*distribution.Frequency.cumsum()
+            ) / distribution.Frequency.sum()
+        mc_results = {}
+        # Get nearest neighbor result
+        for percentil in cfg['Montecarlo']['Percentiles'].get():
+            result_index = distribution['Probability'].sub(percentil).abs()\
+                .idxmin()
+            mc_results['Percentile '+str(percentil)+'%'] = distribution.loc[result_index, 'Items']
+        return mc_results
+    else:
+        return None
+
+
+def calc_simul_days():
+    start = cfg['Montecarlo']['Simulation Start Date'].get()
+    end = cfg['Montecarlo']['Simulation End Date'].get()
+    return (end - start).days
+
 def metrics():
     report_url = str(cfg['Report_URL'])
     simulations = cfg['Montecarlo']['Simulations'].get()
@@ -76,20 +136,17 @@ def metrics():
     kanban_data = get_eazybi_report(report_url)
     ct = calc_cycletime_percentile(kanban_data, 85)
     tp = calc_throughput(kanban_data)
-    print(tp)
-    """
-    mc = simulate_montecarlo(
-        tp, sources='Throughput',
+    mc = run_simulation(
+        tp, source='Throughput',
         simul=simulations,
         simul_days=simulation_days)
-    """
+    print(mc)
 
 
 def main():
     if os.path.isfile('config.yml'):
         cfg.set_file('config.yml')
-        mc = metrics()
-        # print(mc)
+        metrics()
     else:
         raise Exception("You don't have any valid config files")
 
