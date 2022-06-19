@@ -63,13 +63,13 @@ def calc_throughput(kanban_data, start_date=None, end_date=None):
             kanban_data.date, kanban_data.issuetype, colnames=[None]
         ).reset_index()
         # Sum Throughput per day
-        throughput['Throughput'] = 0
+        throughput['All'] = 0
         if 'Story' in throughput:
-            throughput['Throughput'] += throughput.Story
+            throughput['All'] += throughput.Story
         if 'Bug' in throughput:
-            throughput['Throughput'] += throughput.Bug
+            throughput['All'] += throughput.Bug
         if 'Task' in throughput:
-            throughput['Throughput'] += throughput.Task
+            throughput['All'] += throughput.Task
         if throughput.empty is False:
             date_range = pd.date_range(
                 start=throughput.date.min(),
@@ -81,60 +81,54 @@ def calc_throughput(kanban_data, start_date=None, end_date=None):
         return throughput
 
 
-def simulate_montecarlo(throughput, sources=None, simul=None, simul_days=None):
-    """
-    Simulate Monte Carlo
+def run_simulation(throughput, simul=None, simul_days=None):
+    """Run monte carlo simulation with the result of how many itens will
+    be delivered in a set of days
 
     Parameters
     ----------
         throughput : dataFrame
             throughput base values of the simulation
-        sources : dictionary
-            sources that the simulations should run on
         simul : integer
             number of simulations
         simul_days : integer
             days to run the simulation
     """
-    if sources is None:
-        sources = cfg['Montecarlo']['Source'].get()
     if simul is None:
         simul = cfg['Montecarlo']['Simulations'].get()
     if simul_days is None:
-        simul_days = calc_simul_days()
-    mc = {}
-    for source in sources:
-        mc[source] = run_simulation(throughput, source, simul, simul_days)
+        simul_days = cfg['Montecarlo']['Simulation_days'].get()
+    
+    mc = None
+    for source in throughput.columns.values.tolist():
+        if (throughput is not None and source in throughput.columns):
+            dataset = throughput[[source]].reset_index(drop=True)
+            samples = [getattr(dataset.sample(
+                n=simul_days, replace=True
+            ).sum(), source) for i in range(simul)]
+            samples = pd.DataFrame(samples, columns=['Items'])
+            distribution = samples.groupby(['Items']).size().reset_index(
+                name='Frequency'
+            )
+            distribution = distribution.sort_index(ascending=False)
+            distribution['Probability'] = (
+                    100*distribution.Frequency.cumsum()
+                ) / distribution.Frequency.sum()
+            mc_results = {}
+            # Get nearest neighbor result
+            for percentil in cfg['Montecarlo']['Percentiles'].get():
+                result_index = distribution['Probability'].sub(percentil).abs()\
+                    .idxmin()
+                mc_results['montecarlo '+str(percentil)+'%'] = \
+                    distribution.loc[result_index, 'Items']
+            if mc is None:
+                mc = pd.DataFrame.from_dict(mc_results, orient='index', columns=[source]).transpose()
+            else:
+                temp_mc = pd.DataFrame.from_dict(mc_results, orient='index', columns=[source]).transpose()
+                mc = pd.concat([mc, temp_mc])
+        else:
+            return None
     return mc
-
-
-def run_simulation(throughput, source, simul, simul_days):
-    """Run monte carlo simulation with the result of how many itens will
-    be delivered in a set of days """
-
-    if (throughput is not None and source in throughput.columns):
-        dataset = throughput[[source]].reset_index(drop=True)
-        samples = [getattr(dataset.sample(
-            n=simul_days, replace=True
-        ).sum(), source) for i in range(simul)]
-        samples = pd.DataFrame(samples, columns=['Items'])
-        distribution = samples.groupby(['Items']).size().reset_index(
-            name='Frequency'
-        )
-        distribution = distribution.sort_index(ascending=False)
-        distribution['Probability'] = (
-                100*distribution.Frequency.cumsum()
-            ) / distribution.Frequency.sum()
-        mc_results = {}
-        # Get nearest neighbor result
-        for percentil in cfg['Montecarlo']['Percentiles'].get():
-            result_index = distribution['Probability'].sub(percentil).abs()\
-                .idxmin()
-            mc_results['Percentile '+str(percentil)+'%'] = \
-                distribution.loc[result_index, 'Items']
-        return mc_results
-    else:
-        return None
 
 
 def calc_simul_days():
@@ -145,23 +139,19 @@ def calc_simul_days():
 
 def metrics():
     report_url = str(cfg['Report_URL'])
-    simulations = cfg['Montecarlo']['Simulations'].get()
-    simulation_days = cfg['Montecarlo']['Simulation_days'].get()
     kanban_data = get_eazybi_report(report_url)
     ct = calc_cycletime_percentile(kanban_data)
-    print(ct)
     tp = calc_throughput(kanban_data)
-    mc = run_simulation(
-        tp, source='Throughput',
-        simul=simulations,
-        simul_days=simulation_days)
-    print(mc)
+    mc = run_simulation(tp)
+    result = ct.merge(mc, left_index=True, right_index=True)
+    return result
 
 
 def main():
     if os.path.isfile('config.yml'):
         cfg.set_file('config.yml')
-        metrics()
+        result = metrics()
+        print(result)
     else:
         raise Exception("You don't have any valid config files")
 
