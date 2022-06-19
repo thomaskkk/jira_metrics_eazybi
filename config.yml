@@ -10,7 +10,11 @@ Cycletime:
         - 50
         - 85
         - 95
-
+# Custom issuetypes, right now you can't change the 3 types: Story, Bug, Task
+Issuetype:
+    Story: História
+    Bug: Bug
+    Task: Tarefa
 # Simulations - how many simulations we should run 10k should give you a good result
 # Source - Which Throughput/day we should use to run the simulation, must be Story, Bug, Task or Throughput (sum of all 3)
 # Percentiles - that the script should return, the script will return the nearest neighbor result
