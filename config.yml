@@ -1,7 +1,12 @@
 appName: JiraMetricsEazybi
 
-Report_URL: https://aod.eazybi.com/accounts/70597/export/report/1075725-api-export.csv?embed_token=iid25hgzq92p8km005mmfz62q3cqchs58tbeudl24wi4dd64nsrsdcnnxapi
+Report_URL: https://aod.eazybi.com/accounts/70597/export/report/1075966-api-export.csv?embed_token=sclpf5w7ym8suuxzbop5hcn60f03eev6ht4346up4ydplyd3qaavol6it1mp
 
+# Custom issuetypes, right now you can't change the 3 types: Story, Bug, Task
+Issuetype:
+    Story: História
+    Bug: Bug
+    Task: Tarefa
 # Cycletime
 # Percentiles - that the script should return
 # NOTE: for now cycletime percentiles and montecarlo percentiles should match
@@ -10,11 +15,7 @@ Cycletime:
         - 50
         - 85
         - 95
-# Custom issuetypes, right now you can't change the 3 types: Story, Bug, Task
-Issuetype:
-    Story: História
-    Bug: Bug
-    Task: Tarefa
+
 # Simulations - how many simulations we should run 10k should give you a good result
 # Source - Which Throughput/day we should use to run the simulation, must be Story, Bug, Task or Throughput (sum of all 3)
 # Percentiles - that the script should return, the script will return the nearest neighbor result
@@ -26,5 +27,5 @@ Montecarlo:
         - 50
         - 85
         - 95
-    Simulation_days: 92
+    Simulation_days: 14
 

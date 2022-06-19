@@ -4,7 +4,7 @@ import os
 import confuse
 import pandas as pd
 import numpy as np
-from pprint import pprint
+# from pprint import pprint
 
 
 cfg = confuse.Configuration('JiraMetricsEazybi', __name__)
@@ -18,23 +18,35 @@ def get_eazybi_report(report_url):
     dictio = dictio.replace(str(cfg['Issuetype']['Task']), 'Task')
     return dictio
 
+
 def calc_cycletime_percentile(kanban_data, percentile=None):
     """Calculate cycletime percentiles on cfg with all dict entries"""
     if kanban_data.empty is False:
         if percentile is not None:
             issuetype = kanban_data.groupby('issuetype').cycletime.quantile(
                 percentile / 100)
-            issuetype['Total'] = kanban_data.cycletime.quantile(
+            issuetype['All'] = kanban_data.cycletime.quantile(
                 percentile / 100)
             issuetype = issuetype.apply(np.ceil)
+            issuetype = issuetype.astype('int')
             return issuetype
         else:
+            cycletime = None
             for cfg_percentile in cfg['Cycletime']['Percentiles'].get():
-                cycletime = kanban_data.groupby(
+                temp_cycletime = kanban_data.groupby(
                     'issuetype').cycletime.quantile(
                     cfg_percentile / 100)
-                cycletime['Total'] = kanban_data.cycletime.quantile(
+                temp_cycletime['All'] = kanban_data.cycletime.quantile(
                     cfg_percentile / 100)
+                temp_cycletime = temp_cycletime.rename(
+                    'cycletime '+str(cfg_percentile)+'%').\
+                    apply(np.ceil).astype('int')
+                if cycletime is None:
+                    cycletime = temp_cycletime.to_frame()
+                else:
+                    cycletime = cycletime.merge(
+                        temp_cycletime, left_index=True, right_index=True)
+            return cycletime
 
 
 def calc_throughput(kanban_data, start_date=None, end_date=None):
@@ -101,7 +113,7 @@ def run_simulation(throughput, source, simul, simul_days):
     be delivered in a set of days """
 
     if (throughput is not None and source in throughput.columns):
-        dataset = throughput[[source]].reset_index(drop=True) 
+        dataset = throughput[[source]].reset_index(drop=True)
         samples = [getattr(dataset.sample(
             n=simul_days, replace=True
         ).sum(), source) for i in range(simul)]
@@ -118,7 +130,8 @@ def run_simulation(throughput, source, simul, simul_days):
         for percentil in cfg['Montecarlo']['Percentiles'].get():
             result_index = distribution['Probability'].sub(percentil).abs()\
                 .idxmin()
-            mc_results['Percentile '+str(percentil)+'%'] = distribution.loc[result_index, 'Items']
+            mc_results['Percentile '+str(percentil)+'%'] = \
+                distribution.loc[result_index, 'Items']
         return mc_results
     else:
         return None
@@ -129,12 +142,14 @@ def calc_simul_days():
     end = cfg['Montecarlo']['Simulation End Date'].get()
     return (end - start).days
 
+
 def metrics():
     report_url = str(cfg['Report_URL'])
     simulations = cfg['Montecarlo']['Simulations'].get()
     simulation_days = cfg['Montecarlo']['Simulation_days'].get()
     kanban_data = get_eazybi_report(report_url)
-    ct = calc_cycletime_percentile(kanban_data, 85)
+    ct = calc_cycletime_percentile(kanban_data)
+    print(ct)
     tp = calc_throughput(kanban_data)
     mc = run_simulation(
         tp, source='Throughput',

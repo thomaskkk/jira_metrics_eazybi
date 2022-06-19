@@ -6,6 +6,5 @@ pytest>=6.2.2
 
 #prod
 confuse>=1.4.0
-jira>=3.2.0
 numpy>=1.20.0
 pandas>=1.2.1
