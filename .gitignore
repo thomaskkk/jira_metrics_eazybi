@@ -69,8 +69,8 @@ venv.bak/
 #app sample
 config_test.yml
 
-#Google API credentials
-.credentials/
+#CSV files
+*.csv
 
 #vscode
 .vscode/

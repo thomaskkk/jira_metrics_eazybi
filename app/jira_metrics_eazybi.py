@@ -7,7 +7,6 @@ import numpy as np
 from flask import Flask
 from flask_restful import Resource, Api
 
-
 app = Flask(__name__)
 api = Api(app)
 cfg = confuse.Configuration('JiraMetricsEazybi', __name__)
@@ -21,7 +20,8 @@ class Eazybi(Resource):
         if os.path.isfile('config.yml'):
             cfg.set_file('config.yml')
             result = self.metrics()
-            result.to_csv('result.csv', index=False)
+            # result.to_csv('result.csv', index_label='issuetype')
+            return result.to_json(orient="table")
         else:
             raise Exception("You don't have any valid config files")
 
