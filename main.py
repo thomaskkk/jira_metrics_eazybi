@@ -17,13 +17,10 @@ class Eazybi(Resource):
         return
 
     def get(self):
-        if os.path.isfile('secrets/Vulcano'):
-            cfg.set_file('secrets/Vulcano')
-            result = self.metrics()
-            # result.to_csv('result.csv', index_label='issuetype')
-            return result.to_json(orient="table")
-        else:
-            raise Exception("You don't have any valid config files")
+        cfg.set_file('secrets/Vulcano')
+        result = self.metrics()
+        # result.to_csv('result.csv', index_label='issuetype')
+        return result.to_json(orient="table")
 
     def get_eazybi_report(self, report_url):
         dictio = pd.read_csv(report_url, delimiter=',', parse_dates=['Date'])
