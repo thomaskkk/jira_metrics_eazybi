@@ -20,6 +20,7 @@ class Eazybi(Resource):
         if os.path.isfile('secrets/config.yml'):
             cfg.set_file('secrets/config.yml')
             result = self.metrics()
+            result = self.revert_issuetypes_names(result)
             # result.to_csv('result.csv', index_label='issuetype')
             return result.to_json(orient="table")
         else:
@@ -152,6 +153,10 @@ class Eazybi(Resource):
         start = cfg['Montecarlo']['Simulation Start Date'].get()
         end = cfg['Montecarlo']['Simulation End Date'].get()
         return (end - start).days
+
+    def revert_issuetypes_names(self, data):
+        newdata = data.rename(index={'Story': str(cfg['Issuetype']['Story']), 'Bug': str(cfg['Issuetype']['Bug']), 'Task': str(cfg['Issuetype']['Task'])})
+        return newdata
 
     def metrics(self):
         report_url = str(cfg['Report_URL'])
