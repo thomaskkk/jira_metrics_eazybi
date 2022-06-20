@@ -17,7 +17,7 @@ class Eazybi(Resource):
         return
 
     def get(self):
-        cfg.set_file('secrets/Vulcano')
+        cfg.set_file('../secrets/Vulcano')
         result = self.metrics()
         # result.to_csv('result.csv', index_label='issuetype')
         return result.to_json(orient="table")
