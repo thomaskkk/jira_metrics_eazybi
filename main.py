@@ -3,7 +3,6 @@
 import os
 import confuse
 import pandas as pd
-import numpy as np
 from flask import Flask
 from flask_restful import Resource, Api
 
@@ -20,49 +19,22 @@ class Eazybi(Resource):
         if os.path.isfile('secrets/config.yml'):
             cfg.set_file('secrets/config.yml')
             result = self.metrics()
-            result = self.revert_issuetypes_names(result)
-            # result.to_csv('result.csv', index_label='issuetype')
             return result.to_json(orient="table")
         else:
             raise Exception("You don't have any valid config files")
 
-    def get_eazybi_report(self, report_url):
-        dictio = pd.read_csv(report_url, delimiter=',', parse_dates=['Date'])
-        dictio.columns = ['date', 'key', 'issuetype', 'cycletime']
-        dictio = dictio.replace(str(cfg['Issuetype']['Story']), 'Story')
-        dictio = dictio.replace(str(cfg['Issuetype']['Bug']), 'Bug')
-        dictio = dictio.replace(str(cfg['Issuetype']['Task']), 'Task')
-        return dictio
+    def metrics(self):
+        report_url = str(cfg['Report_URL'])
+        kanban_data = self.get_eazybi_report(report_url)
+        tp = self.calc_throughput(kanban_data)
+        mc = self.run_simulation(tp)
+        mc = mc.rename(index={'issues': kanban_data.loc[0]['project']})
+        return mc
 
-    def calc_cycletime_percentile(self, kanban_data, percentile=None):
-        """Calculate cycletime percentiles on cfg with all dict entries"""
-        if kanban_data.empty is False:
-            if percentile is not None:
-                issuetype = kanban_data.groupby(
-                    'issuetype').cycletime.quantile(
-                    percentile / 100)
-                issuetype['All'] = kanban_data.cycletime.quantile(
-                    percentile / 100)
-                issuetype = issuetype.apply(np.ceil)
-                issuetype = issuetype.astype('int')
-                return issuetype
-            else:
-                cycletime = None
-                for cfg_percentile in cfg['Cycletime']['Percentiles'].get():
-                    temp_cycletime = kanban_data.groupby(
-                        'issuetype').cycletime.quantile(
-                        cfg_percentile / 100)
-                    temp_cycletime['All'] = kanban_data.cycletime.quantile(
-                        cfg_percentile / 100)
-                    temp_cycletime = temp_cycletime.rename(
-                        'cycletime '+str(cfg_percentile)+'%').\
-                        apply(np.ceil).astype('int')
-                    if cycletime is None:
-                        cycletime = temp_cycletime.to_frame()
-                    else:
-                        cycletime = cycletime.merge(
-                            temp_cycletime, left_index=True, right_index=True)
-                return cycletime
+    def get_eazybi_report(self, report_url):
+        dictio = pd.read_csv(report_url, delimiter=',', parse_dates=['Time'])
+        dictio.columns = ['project', 'date', 'issue', 'cycletime']
+        return dictio
 
     def calc_throughput(self, kanban_data, start_date=None, end_date=None):
         """Change the pandas DF to a Troughput per day format"""
@@ -75,16 +47,8 @@ class Eazybi(Resource):
         if kanban_data.empty is False:
             # Reorganize DataFrame
             throughput = pd.crosstab(
-                kanban_data.date, kanban_data.issuetype, colnames=[None]
+                kanban_data.date, columns=['issues'], colnames=[None]
             ).reset_index()
-            # Sum Throughput per day
-            throughput['All'] = 0
-            if 'Story' in throughput:
-                throughput['All'] += throughput.Story
-            if 'Bug' in throughput:
-                throughput['All'] += throughput.Bug
-            if 'Task' in throughput:
-                throughput['All'] += throughput.Task
             if throughput.empty is False:
                 date_range = pd.date_range(
                     start=throughput.date.min(),
@@ -114,58 +78,39 @@ class Eazybi(Resource):
             simul_days = cfg['Montecarlo']['Simulation_days'].get()
 
         mc = None
-        for source in throughput.columns.values.tolist():
-            if (throughput is not None and source in throughput.columns):
-                dataset = throughput[[source]].reset_index(drop=True)
-                samples = [getattr(dataset.sample(
-                    n=simul_days, replace=True
-                ).sum(), source) for i in range(simul)]
-                samples = pd.DataFrame(samples, columns=['Items'])
-                distribution = samples.groupby(['Items']).size().reset_index(
-                    name='Frequency'
-                )
-                distribution = distribution.sort_index(ascending=False)
-                distribution['Probability'] = (
-                        100*distribution.Frequency.cumsum()
-                    ) / distribution.Frequency.sum()
-                mc_results = {}
-                # Get nearest neighbor result
-                for percentil in cfg['Montecarlo']['Percentiles'].get():
-                    result_index = distribution['Probability'].sub(
-                        percentil
-                        ).abs().idxmin()
-                    mc_results['montecarlo '+str(percentil)+'%'] = \
-                        distribution.loc[result_index, 'Items']
-                if mc is None:
-                    mc = pd.DataFrame.from_dict(
-                        mc_results, orient='index', columns=[source]
-                        ).transpose()
-                else:
-                    temp_mc = pd.DataFrame.from_dict(
-                        mc_results, orient='index', columns=[source]
-                        ).transpose()
-                    mc = pd.concat([mc, temp_mc])
+        if (throughput is not None):
+            dataset = throughput[['issues']].reset_index(drop=True)
+            samples = [getattr(dataset.sample(
+                n=simul_days, replace=True
+            ).sum(), 'issues') for i in range(simul)]
+            samples = pd.DataFrame(samples, columns=['Items'])
+            distribution = samples.groupby(['Items']).size().reset_index(
+                name='Frequency'
+            )
+            distribution = distribution.sort_index(ascending=False)
+            distribution['Probability'] = (
+                    100*distribution.Frequency.cumsum()
+                ) / distribution.Frequency.sum()
+            mc_results = {}
+            # Get nearest neighbor result
+            for percentil in cfg['Montecarlo']['Percentiles'].get():
+                result_index = distribution['Probability'].sub(
+                    percentil
+                    ).abs().idxmin()
+                mc_results['montecarlo '+str(percentil)+'%'] = \
+                    distribution.loc[result_index, 'Items']
+            if mc is None:
+                mc = pd.DataFrame.from_dict(
+                    mc_results, orient='index', columns=['issues']
+                    ).transpose()
             else:
-                return None
+                temp_mc = pd.DataFrame.from_dict(
+                    mc_results, orient='index', columns=['issues']
+                    ).transpose()
+                mc = pd.concat([mc, temp_mc])
+        else:
+            return None
         return mc
-
-    def calc_simul_days(self):
-        start = cfg['Montecarlo']['Simulation Start Date'].get()
-        end = cfg['Montecarlo']['Simulation End Date'].get()
-        return (end - start).days
-
-    def revert_issuetypes_names(self, data):
-        newdata = data.rename(index={'Story': str(cfg['Issuetype']['Story']), 'Bug': str(cfg['Issuetype']['Bug']), 'Task': str(cfg['Issuetype']['Task'])})
-        return newdata
-
-    def metrics(self):
-        report_url = str(cfg['Report_URL'])
-        kanban_data = self.get_eazybi_report(report_url)
-        ct = self.calc_cycletime_percentile(kanban_data)
-        tp = self.calc_throughput(kanban_data)
-        mc = self.run_simulation(tp)
-        result = ct.merge(mc, left_index=True, right_index=True)
-        return result
 
 
 class HelloWorld(Resource):
