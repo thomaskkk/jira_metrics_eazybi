@@ -3,6 +3,7 @@
 import os
 import confuse
 import pandas as pd
+import numpy as np
 from flask import Flask
 from flask_restful import Resource, Api
 
@@ -26,15 +27,39 @@ class Eazybi(Resource):
     def metrics(self):
         report_url = str(cfg['Report_URL'])
         kanban_data = self.get_eazybi_report(report_url)
+        ct = self.calc_cycletime_percentile(kanban_data)
         tp = self.calc_throughput(kanban_data)
         mc = self.run_simulation(tp)
         mc = mc.rename(index={'issues': kanban_data.loc[0]['project']})
-        return mc
+        result = ct.merge(mc, left_index=True, right_index=True)
+        return result
 
     def get_eazybi_report(self, report_url):
         dictio = pd.read_csv(report_url, delimiter=',', parse_dates=['Time'])
         dictio.columns = ['project', 'date', 'issue', 'cycletime']
         return dictio
+  
+    def calc_cycletime_percentile(self, kanban_data, percentile=None):
+        """Calculate cycletime percentiles on cfg with all dict entries"""
+        if kanban_data.empty is False:
+            if percentile is not None:
+                issuetype = kanban_data.groupby('project').cycletime.quantile(
+                    percentile / 100).apply(np.ceil).astype('int')
+                return issuetype
+            else:
+                cycletime = None
+                for cfg_percentile in cfg['Cycletime']['Percentiles'].get():
+                    temp_cycletime = kanban_data.groupby(
+                        'project').cycletime.quantile(
+                        cfg_percentile / 100).rename(
+                        'cycletime '+str(cfg_percentile)+'%').apply(
+                            np.ceil).astype('int')
+                    if cycletime is None:
+                        cycletime = temp_cycletime.to_frame()
+                    else:
+                        cycletime = cycletime.merge(
+                            temp_cycletime, left_index=True, right_index=True)
+                return cycletime
 
     def calc_throughput(self, kanban_data, start_date=None, end_date=None):
         """Change the pandas DF to a Troughput per day format"""
@@ -123,3 +148,4 @@ api.add_resource(Eazybi, '/eazybi')
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    # Eazybi().get()
