@@ -17,7 +17,7 @@ class Eazybi(Resource):
         return
 
     def get(self):
-        if os.path.isfile('config.yml'):
+        if os.path.isfile('secrets/config.yml'):
             cfg.set_file('config.yml')
             result = self.metrics()
             # result.to_csv('result.csv', index_label='issuetype')

@@ -67,7 +67,7 @@ env.bak/
 venv.bak/
 
 #app sample
-config_test.yml
+config_example.yml
 
 #CSV files
 *.csv
@@ -75,5 +75,5 @@ config_test.yml
 #vscode
 .vscode/
 
-#config
-config/*
+#secrets
+secrets/*
