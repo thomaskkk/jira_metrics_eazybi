@@ -98,7 +98,7 @@ def run_simulation(throughput, simul=None, simul_days=None):
         simul = cfg['Montecarlo']['Simulations'].get()
     if simul_days is None:
         simul_days = cfg['Montecarlo']['Simulation_days'].get()
-    
+
     mc = None
     for source in throughput.columns.values.tolist():
         if (throughput is not None and source in throughput.columns):
@@ -117,14 +117,19 @@ def run_simulation(throughput, simul=None, simul_days=None):
             mc_results = {}
             # Get nearest neighbor result
             for percentil in cfg['Montecarlo']['Percentiles'].get():
-                result_index = distribution['Probability'].sub(percentil).abs()\
-                    .idxmin()
+                result_index = distribution['Probability'].sub(
+                    percentil
+                    ).abs().idxmin()
                 mc_results['montecarlo '+str(percentil)+'%'] = \
                     distribution.loc[result_index, 'Items']
             if mc is None:
-                mc = pd.DataFrame.from_dict(mc_results, orient='index', columns=[source]).transpose()
+                mc = pd.DataFrame.from_dict(
+                    mc_results, orient='index', columns=[source]
+                    ).transpose()
             else:
-                temp_mc = pd.DataFrame.from_dict(mc_results, orient='index', columns=[source]).transpose()
+                temp_mc = pd.DataFrame.from_dict(
+                    mc_results, orient='index', columns=[source]
+                    ).transpose()
                 mc = pd.concat([mc, temp_mc])
         else:
             return None
