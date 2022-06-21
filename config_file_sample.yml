@@ -1,0 +1,32 @@
+appName: JiraMetricsEazybi
+
+#Public report url of eazybi to extract data from, should have issues with their cycletimes
+Account_number: Add your eazybi account number here
+Report_number: Add your eazybi public report number here
+Report_token: Add your public report token here
+
+# Cycletime
+# Percentiles - Cycletime percentiles that the script should return as columns
+Cycletime:
+    Percentiles:
+        - 50
+        - 85
+        - 95
+
+# Throughput
+# Throughput range - Number in days of historic data that should be used counting from today
+# (Ex. 90 = starting from 90 days ago until today)
+# This is also the source data that will be used to generate the monte carlo simulations
+Throughput_range: 90
+
+# Monte Carlo Simulation
+# Simulations - how many simulations we should run, 10k should give you a good result
+# Simulation Days - Quantity of days to be added as a parameter of the simulation, result will be how many items will fit this timebox
+# Percentiles - that the script should return, the script will return the nearest neighbor result
+Montecarlo:
+    Simulations: 10000
+    Simulation_days: 14
+    Percentiles:
+        - 50
+        - 85
+        - 95

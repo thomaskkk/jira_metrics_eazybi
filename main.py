@@ -17,13 +17,18 @@ class Eazybi(Resource):
     def __init__(self):
         return
 
-    def get(self):
-        if os.path.isfile('secrets/config.yml'):
-            cfg.set_file('secrets/config.yml')
+    def get(self, filename):
+        if os.path.isfile('secrets/'+str(filename)+'.yml'):
+            cfg.set_file('secrets/'+str(filename)+'.yml')
+            result = self.metrics()
+            return result.to_json(orient="table")
+        elif os.path.isfile('secrets/'+str(filename)):
+            cfg.set_file('secrets/'+str(filename))
             result = self.metrics()
             return result.to_json(orient="table")
         else:
-            raise Exception("You don't have any valid config files")
+            return {"message":  {
+                "filename": "You don't have any valid config files", }}
 
     def metrics(self):
         report_url = self.generate_url()
@@ -73,7 +78,20 @@ class Eazybi(Resource):
                 return cycletime
 
     def calc_throughput(self, kanban_data, start_date=None, end_date=None):
-        """Change the pandas DF to a Troughput per day format"""
+        """Change the pandas DF to a Troughput per day format, a good
+        throughput table has all days from start date to end date filled
+        with zeroes if there are no ocurrences
+
+        Parameters
+        ----------
+            kanban_data : dataFrame
+                dataFrame to be sorted by throughput (number of ocurrences
+                per day)
+            start_date : date
+                earliest date of the throughput
+            end_date : date
+                final date of the throughput
+        """
         if start_date is not None and 'date' in kanban_data.columns:
             kanban_data = kanban_data[~(
                 kanban_data['date'] < start_date)]
@@ -85,7 +103,8 @@ class Eazybi(Resource):
             throughput = pd.crosstab(
                 kanban_data.date, columns=['issues'], colnames=[None]
             ).reset_index()
-            if throughput.empty is False and (start_date is not None and end_date is not None):
+            if throughput.empty is False and (
+                    start_date is not None and end_date is not None):
                 date_range = pd.date_range(
                     start=start_date,
                     end=end_date
@@ -149,13 +168,13 @@ class Eazybi(Resource):
         return mc
 
 
-class HelloWorld(Resource):
+class Hello(Resource):
     def get(self):
-        return {'about': 'Hello World!'}
+        return {'message': 'All ok!'}
 
 
-api.add_resource(HelloWorld, '/')
-api.add_resource(Eazybi, '/eazybi')
+api.add_resource(Hello, '/')
+api.add_resource(Eazybi, '/eazybi/<string:filename>')
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
