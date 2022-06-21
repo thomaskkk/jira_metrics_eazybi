@@ -1,6 +1,8 @@
 appName: JiraMetricsEazybi
 
-#Public report url of eazybi to extract data from, should have issues with their cycletimes
+# Public report url of eazybi to extract data from, should have issues with their cycletimes
+# Check eazybi documentation how to find these numbers in your public report url
+# https://docs.eazybi.com/eazybi/set-up-and-administer/customization/report-results-export-api
 Account_number: Add your eazybi account number here
 Report_number: Add your eazybi public report number here
 Report_token: Add your public report token here

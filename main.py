@@ -18,12 +18,12 @@ class Eazybi(Resource):
         return
 
     def get(self, filename):
-        if os.path.isfile('secrets/'+str(filename)+'.yml'):
-            cfg.set_file('secrets/'+str(filename)+'.yml')
+        if os.path.isfile('secrets/'+str(filename)+'/'+str(filename)+'.yml'):
+            cfg.set_file('secrets/'+str(filename)+'/'+str(filename)+'.yml')
             result = self.metrics()
             return result.to_json(orient="table")
-        elif os.path.isfile('secrets/'+str(filename)):
-            cfg.set_file('secrets/'+str(filename))
+        elif os.path.isfile('secrets/'+str(filename)+'/'+str(filename)):
+            cfg.set_file('secrets/'+str(filename)+'/'+str(filename))
             result = self.metrics()
             return result.to_json(orient="table")
         else:
