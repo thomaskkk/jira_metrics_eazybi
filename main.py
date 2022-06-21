@@ -4,6 +4,7 @@ import os
 import confuse
 import pandas as pd
 import numpy as np
+from datetime import date, timedelta
 from flask import Flask
 from flask_restful import Resource, Api
 
@@ -25,20 +26,30 @@ class Eazybi(Resource):
             raise Exception("You don't have any valid config files")
 
     def metrics(self):
-        report_url = str(cfg['Report_URL'])
+        report_url = self.generate_url()
         kanban_data = self.get_eazybi_report(report_url)
         ct = self.calc_cycletime_percentile(kanban_data)
-        tp = self.calc_throughput(kanban_data)
+        today = date.today().strftime("%Y-%m-%d")
+        past = date.today() - timedelta(days=cfg['Throughput_range'].get())
+        past = past.strftime("%Y-%m-%d")
+        tp = self.calc_throughput(kanban_data, past, today)
         mc = self.run_simulation(tp)
         mc = mc.rename(index={'issues': kanban_data.loc[0]['project']})
         result = ct.merge(mc, left_index=True, right_index=True)
         return result
 
+    def generate_url(self):
+        url = (
+            "https://aod.eazybi.com/accounts/" + str(cfg['Account_number']) +
+            "/export/report/" + str(cfg['Report_number']) +
+            "-api-export.csv?embed_token=" + str(cfg['Report_token']))
+        return url
+
     def get_eazybi_report(self, report_url):
         dictio = pd.read_csv(report_url, delimiter=',', parse_dates=['Time'])
         dictio.columns = ['project', 'date', 'issue', 'cycletime']
         return dictio
-  
+
     def calc_cycletime_percentile(self, kanban_data, percentile=None):
         """Calculate cycletime percentiles on cfg with all dict entries"""
         if kanban_data.empty is False:
@@ -74,10 +85,10 @@ class Eazybi(Resource):
             throughput = pd.crosstab(
                 kanban_data.date, columns=['issues'], colnames=[None]
             ).reset_index()
-            if throughput.empty is False:
+            if throughput.empty is False and (start_date is not None and end_date is not None):
                 date_range = pd.date_range(
-                    start=throughput.date.min(),
-                    end=throughput.date.max()
+                    start=start_date,
+                    end=end_date
                 )
                 throughput = throughput.set_index(
                     'date'
