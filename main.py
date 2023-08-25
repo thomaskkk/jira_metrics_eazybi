@@ -7,6 +7,7 @@ import numpy as np
 from datetime import date, timedelta
 from flask import Flask
 from flask_restful import Resource, Api
+from google.cloud import secretmanager
 
 app = Flask(__name__)
 api = Api(app)
@@ -33,6 +34,37 @@ class Eazybi(Resource):
                 }
             }
 
+    def access_secret_version(
+            project_id: str, secret_id: str, version_id: str
+            ) -> secretmanager.AccessSecretVersionResponse:
+        """
+        Access the payload for the given secret version if one exists. The version
+        can be a version number as a string (e.g. "5") or an alias (e.g. "latest").
+        """
+
+        # Create the Secret Manager client.
+        client = secretmanager.SecretManagerServiceClient()
+
+        # Build the resource name of the secret version.
+        name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
+
+        # Access the secret version.
+        response = client.access_secret_version(request={"name": name})
+
+        # Verify payload checksum.
+        crc32c = google_crc32c.Checksum()
+        crc32c.update(response.payload.data)
+        if response.payload.data_crc32c != int(crc32c.hexdigest(), 16):
+            print("Data corruption detected.")
+            return response
+
+        # Print the secret payload.
+        #
+        # WARNING: Do not print the secret in a production environment - this
+        # snippet is showing how to access the secret material.
+        payload = response.payload.data.decode("UTF-8")
+        print(f"Plaintext: {payload}")
+
     def metrics(self):
         report_url = self.generate_url()
         kanban_data = self.get_eazybi_report(report_url)
@@ -47,6 +79,7 @@ class Eazybi(Resource):
         return result
 
     def generate_url(self):
+        """Generate a url to fetch eazybi data"""
         url = (
             "https://aod.eazybi.com/accounts/"
             + str(cfg["Account_number"])
@@ -58,6 +91,7 @@ class Eazybi(Resource):
         return url
 
     def get_eazybi_report(self, report_url):
+        """Capturea eazybi data from an url and convert to a dictionary"""
         dictio = pd.read_csv(report_url, delimiter=",", parse_dates=["Time"])
         dictio.columns = ["project", "date", "issue", "cycletime"]
         return dictio
