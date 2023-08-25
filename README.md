@@ -23,13 +23,14 @@ Your table/data should look like this:
 Save the report and make it public with an access token
 
 ### Config file
-Open config_file_sample.yml and paste all info from the public report: Account_number, Report_number, Report_token
-Make any changes necessary to the yaml file.
-Use the GCP Secrets Manager to create a secret paste the contents of the updated config_file_sample.yml
-Give permissions for your Cloud run to access secret.
+- Open config_file_sample.yml and paste all info from the public report: Account_number, Report_number, Report_token
+- Check for any further changes necessary to the yaml file.
+- Use the GCP Secrets Manager to create a secret and paste the contents of the updated config_file_sample.yml
+- Deploy your Cloud run instance.
+- Give permissions for your Cloud run to access your secret.
 
 ### Configure API Eazybi project
-Go to your account Source Data tab and add a new source aplication as a Rest:API
+Go to your account Source Data tab and add a new source aplication as a Rest:API.
 - Your source data URL should be <your_gcp_server_url>/eazybi/<your_secret_name>
     - Example: https://jira-metrics-eazybi.app/eazybi/jp
 - Set request method to GET
