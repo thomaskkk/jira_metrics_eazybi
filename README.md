@@ -22,26 +22,28 @@ Your table/data should look like this:
 
 Save the report and make it public with an access token
 
-Copy the Account_number, Report_number, and Report_token from the Eazybi report to the config file named <your_squad_name>.yml
-
 ### Config file
-The config file should be in the secrets/ folder
-
-You can change other settings inside the config file
-
-If you are using GCP Cloud Run you can use the Secrets Manager and mount as a filename
+Open config_file_sample.yml and paste all info from the public report: Account_number, Report_number, Report_token
+Make any changes necessary to the yaml file.
+Use the GCP Secrets Manager to create a secret paste the contents of the updated config_file_sample.yml
+Give permissions for your Cloud run to access secret.
 
 ### Configure API Eazybi project
 Go to your account Source Data tab and add a new source aplication as a Rest:API
-- Your source data URL should be <your_gcp_server_url>/eazybi/<your_squad_name_without.yml>
+- Your source data URL should be <your_gcp_server_url>/eazybi/<your_secret_name>
     - Example: https://jira-metrics-eazybi.app/eazybi/jp
 - Set request method to GET
 - Content type to JSON
 - Data path to $.data
 
 ## How to setup dev enviroment
+### Setup
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
+### Local Flask
+```bash
+python3 main.py
 ```

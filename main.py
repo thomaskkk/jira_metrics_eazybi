@@ -8,10 +8,14 @@ from datetime import date, timedelta
 from flask import Flask
 from flask_restful import Resource, Api
 from google.cloud import secretmanager
+import google_crc32c
+import yaml
+import google.auth
 
 app = Flask(__name__)
 api = Api(app)
 cfg = confuse.Configuration("JiraMetricsEazybi", __name__)
+credentials, project_id = google.auth.default()
 
 
 class Eazybi(Resource):
@@ -19,14 +23,10 @@ class Eazybi(Resource):
         return
 
     def get(self, filename):
-        if os.path.isfile("secrets/" + str(filename) + "/" + str(filename) + ".yml"):
-            cfg.set_file("secrets/" + str(filename) + "/" + str(filename) + ".yml")
-            result = self.metrics()
-            return result.to_json(orient="table")
-        elif os.path.isfile("secrets/" + str(filename) + "/" + str(filename)):
-            cfg.set_file("secrets/" + str(filename) + "/" + str(filename))
-            result = self.metrics()
-            return result.to_json(orient="table")
+        if project_id:
+            yaml_string = access_secret_version(project_id, filename)
+            yaml_data = yaml.load(yaml_string, Loader=yaml.FullLoader)
+            cfg.set(yaml_data)
         else:
             return {
                 "message": {
@@ -34,36 +34,8 @@ class Eazybi(Resource):
                 }
             }
 
-    def access_secret_version(
-            project_id: str, secret_id: str, version_id: str
-            ) -> secretmanager.AccessSecretVersionResponse:
-        """
-        Access the payload for the given secret version if one exists. The version
-        can be a version number as a string (e.g. "5") or an alias (e.g. "latest").
-        """
-
-        # Create the Secret Manager client.
-        client = secretmanager.SecretManagerServiceClient()
-
-        # Build the resource name of the secret version.
-        name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
-
-        # Access the secret version.
-        response = client.access_secret_version(request={"name": name})
-
-        # Verify payload checksum.
-        crc32c = google_crc32c.Checksum()
-        crc32c.update(response.payload.data)
-        if response.payload.data_crc32c != int(crc32c.hexdigest(), 16):
-            print("Data corruption detected.")
-            return response
-
-        # Print the secret payload.
-        #
-        # WARNING: Do not print the secret in a production environment - this
-        # snippet is showing how to access the secret material.
-        payload = response.payload.data.decode("UTF-8")
-        print(f"Plaintext: {payload}")
+        result = self.metrics()
+        return result.to_json(orient="table")
 
     def metrics(self):
         report_url = self.generate_url()
@@ -219,6 +191,31 @@ class Eazybi(Resource):
 class Hello(Resource):
     def get(self):
         return {"message": "All ok!"}
+
+
+def access_secret_version(
+        project_id: str, secret_id: str
+        ) -> secretmanager.AccessSecretVersionResponse:
+    """
+    Access the payload for the given secret version if one exists.
+    """
+    # Create the Secret Manager client.
+    client = secretmanager.SecretManagerServiceClient()
+
+    # Build the resource name of the secret version.
+    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+
+    # Access the secret version.
+    response = client.access_secret_version(request={"name": name})
+
+    # Verify payload checksum.
+    crc32c = google_crc32c.Checksum()
+    crc32c.update(response.payload.data)
+    if response.payload.data_crc32c != int(crc32c.hexdigest(), 16):
+        print("Data corruption detected.")
+        return response
+
+    return response.payload.data.decode("UTF-8")
 
 
 api.add_resource(Hello, "/")
