@@ -23,7 +23,15 @@ class Eazybi(Resource):
         return
 
     def get(self, filename):
-        if project_id:
+        if os.path.isfile("secrets/" + str(filename) + "/" + str(filename) + ".yml"):
+            cfg.set_file("secrets/" + str(filename) + "/" + str(filename) + ".yml")
+            result = self.metrics()
+            return result.to_json(orient="table")
+        elif os.path.isfile("secrets/" + str(filename) + "/" + str(filename)):
+            cfg.set_file("secrets/" + str(filename) + "/" + str(filename))
+            result = self.metrics()
+            return result.to_json(orient="table")
+        elif project_id:
             yaml_string = access_secret_version(project_id, filename)
             yaml_data = yaml.load(yaml_string, Loader=yaml.FullLoader)
             cfg.set(yaml_data)
