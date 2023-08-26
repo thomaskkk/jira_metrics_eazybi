@@ -222,6 +222,4 @@ api.add_resource(Hello, "/")
 api.add_resource(Eazybi, "/eazybi/<string:filename>")
 
 if __name__ == "__main__":
-    # Debug settings VSCode on Python: File
-    # app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
     app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
