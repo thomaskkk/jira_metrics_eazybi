@@ -1,8 +1,9 @@
 #cat requirements.txt
 
 #local
-flake8>=4.0.1
-pytest>=7.1.2
+#flake8>=4.0.1
+#pytest>=7.1.2
+#debugpy # Required for debugging.
 
 #prod
 confuse>=1.7.0
