@@ -7,6 +7,7 @@ import numpy as np
 from datetime import date, timedelta
 from flask import Flask
 from flask_restful import Resource, Api
+from contextlib import suppress
 from google.cloud import secretmanager
 import google_crc32c
 import yaml
@@ -235,6 +236,9 @@ class Hello(Resource):
 
 if __name__ == "__main__":
     cfg = confuse.Configuration("JiraMetricsEazybi", __name__)
-    credentials, project_id = google.auth.default()
+
+    with suppress(Exception):
+        credentials, project_id = google.auth.default()
+    
     app = create_app()
-    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
