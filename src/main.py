@@ -13,14 +13,18 @@ import google_crc32c
 import yaml
 import google.auth
 
-app = Flask(__name__)
-api = Api(app)
+def create_app():
+    app = Flask(__name__)
 
-cfg = confuse.Configuration("JiraMetricsEazybi", __name__)
+    register_resources(app)
 
-with suppress(Exception):
-    credentials, project_id = google.auth.default()
+    return app
 
+def register_resources(app):
+    api = Api(app)
+
+    api.add_resource(Hello, "/")
+    api.add_resource(Eazybi, "/eazybi/<string:filename>")
 
 def access_secret_version(
         project_id: str, secret_id: str
@@ -230,8 +234,11 @@ class Hello(Resource):
         return {"message": "All ok!"}
 
 
-api.add_resource(Hello, "/")
-api.add_resource(Eazybi, "/eazybi/<string:filename>")
-
 if __name__ == "__main__":
+    cfg = confuse.Configuration("JiraMetricsEazybi", __name__)
+
+    with suppress(Exception):
+        credentials, project_id = google.auth.default()
+    
+    app = create_app()
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
