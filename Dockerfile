@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED True
 # Copy local code to the container image.
 ENV APP_HOME /app
 WORKDIR $APP_HOME
-COPY . .
+COPY src/ ./
 
 # copy the requirements file used for dependencies
 COPY requirements.txt .
