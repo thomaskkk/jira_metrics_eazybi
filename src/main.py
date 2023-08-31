@@ -7,15 +7,48 @@ import numpy as np
 from datetime import date, timedelta
 from flask import Flask
 from flask_restful import Resource, Api
+from contextlib import suppress
 from google.cloud import secretmanager
 import google_crc32c
 import yaml
 import google.auth
 
-app = Flask(__name__)
-api = Api(app)
-cfg = confuse.Configuration("JiraMetricsEazybi", __name__)
-credentials, project_id = google.auth.default()
+def create_app():
+    app = Flask(__name__)
+
+    register_resources(app)
+
+    return app
+
+def register_resources(app):
+    api = Api(app)
+
+    api.add_resource(Hello, "/")
+    api.add_resource(Eazybi, "/eazybi/<string:filename>")
+
+def access_secret_version(
+        project_id: str, secret_id: str
+        ) -> secretmanager.AccessSecretVersionResponse:
+    """
+    Access the payload for the given secret version if one exists.
+    """
+    # Create the Secret Manager client.
+    client = secretmanager.SecretManagerServiceClient()
+
+    # Build the resource name of the secret version.
+    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+
+    # Access the secret version.
+    response = client.access_secret_version(request={"name": name})
+
+    # Verify payload checksum.
+    crc32c = google_crc32c.Checksum()
+    crc32c.update(response.payload.data)
+    if response.payload.data_crc32c != int(crc32c.hexdigest(), 16):
+        print("Data corruption detected.")
+        return response
+
+    return response.payload.data.decode("UTF-8")
 
 
 class Eazybi(Resource):
@@ -201,33 +234,11 @@ class Hello(Resource):
         return {"message": "All ok!"}
 
 
-def access_secret_version(
-        project_id: str, secret_id: str
-        ) -> secretmanager.AccessSecretVersionResponse:
-    """
-    Access the payload for the given secret version if one exists.
-    """
-    # Create the Secret Manager client.
-    client = secretmanager.SecretManagerServiceClient()
-
-    # Build the resource name of the secret version.
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-
-    # Access the secret version.
-    response = client.access_secret_version(request={"name": name})
-
-    # Verify payload checksum.
-    crc32c = google_crc32c.Checksum()
-    crc32c.update(response.payload.data)
-    if response.payload.data_crc32c != int(crc32c.hexdigest(), 16):
-        print("Data corruption detected.")
-        return response
-
-    return response.payload.data.decode("UTF-8")
-
-
-api.add_resource(Hello, "/")
-api.add_resource(Eazybi, "/eazybi/<string:filename>")
-
 if __name__ == "__main__":
-    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    cfg = confuse.Configuration("JiraMetricsEazybi", __name__)
+
+    with suppress(Exception):
+        credentials, project_id = google.auth.default()
+    
+    app = create_app()
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

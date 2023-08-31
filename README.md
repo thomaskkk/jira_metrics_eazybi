@@ -52,9 +52,10 @@ Go to your account Source Data tab and add a new source aplication as a Rest:API
 
 ## How to setup dev enviroment
 ### Setup
+Check Dockerfile and requirements.txt for Cloud Run debugging settings.
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
-Check Dockerfile and requirements.txt for Cloud Run debugging settings.
+
