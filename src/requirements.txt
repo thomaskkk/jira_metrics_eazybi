@@ -3,6 +3,7 @@
 #local dev
 flake8>=4.0.1
 pytest>=7.1.2
+pytest-flask>=1.2.0
 debugpy # Required for debugging.
 
 #prod

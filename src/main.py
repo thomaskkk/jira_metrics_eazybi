@@ -25,8 +25,12 @@ class Eazybi(Resource):
     def get(self, filename):
         if os.path.isfile("secrets/" + str(filename) + "/" + str(filename) + ".yml"):
             cfg.set_file("secrets/" + str(filename) + "/" + str(filename) + ".yml")
+            result = self.metrics()
+            return result.to_json(orient="table")
         elif os.path.isfile("secrets/" + str(filename) + "/" + str(filename)):
             cfg.set_file("secrets/" + str(filename) + "/" + str(filename))
+            result = self.metrics()
+            return result.to_json(orient="table")
         elif project_id:
             yaml_string = access_secret_version(project_id, filename)
             yaml_data = yaml.load(yaml_string, Loader=yaml.FullLoader)
@@ -37,13 +41,13 @@ class Eazybi(Resource):
                     "filename": "You don't have any valid config files",
                 }
             }
-        
-        report_url = self.generate_url()
-        kanban_data = self.get_eazybi_report(report_url)
-        result = self.metrics(kanban_data)
+
+        result = self.metrics()
         return result.to_json(orient="table")
 
-    def metrics(self, kanban_data):
+    def metrics(self):
+        report_url = self.generate_url()
+        kanban_data = self.get_eazybi_report(report_url)
         ct = self.calc_cycletime_percentile(kanban_data)
         today = date.today().strftime("%Y-%m-%d")
         past = date.today() - timedelta(days=cfg["Throughput_range"].get())
