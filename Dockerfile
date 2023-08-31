@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED True
 # Copy local code to the container image.
 ENV APP_HOME /app
 WORKDIR $APP_HOME
-COPY . .
+COPY src/ ./
 
 # copy the requirements file used for dependencies
 COPY requirements.txt .
@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Timeout is set to 0 to disable the timeouts of the workers to allow Cloud Run to handle instance scaling.
 
 # Enable this for cloud run production - PROD ENVIROMENT
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 'main:create_app()'
 
 # OR Enable this for cloud run debbuging on vscode - DEV ENVIROMENT
 # ENTRYPOINT ["python", "main.py"]
