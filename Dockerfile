@@ -19,9 +19,9 @@ COPY requirements.txt .
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # Install google cloud sdk (Debugging)
-# RUN apt-get -y update; apt-get -y install curl
-# RUN curl -sSL https://sdk.cloud.google.com | bash
-# ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
+RUN apt-get -y update; apt-get -y install curl
+RUN curl -sSL https://sdk.cloud.google.com | bash
+ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
 
 # Run the web service on container startup. Here we use the gunicorn
 # webserver, with one worker process and 8 threads.
