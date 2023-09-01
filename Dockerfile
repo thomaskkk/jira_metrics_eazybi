@@ -6,16 +6,22 @@ FROM python:3.11-slim
 # Allow statements and log messages to immediately appear in the Knative logs
 ENV PYTHONUNBUFFERED True
 
-# Copy local code to the container image.
 ENV APP_HOME /app
 WORKDIR $APP_HOME
+
+# Copy the rest of the working directory contents into the container at /app
 COPY src/ ./
 
 # copy the requirements file used for dependencies
 COPY requirements.txt .
 
-# Install production dependencies.
-RUN pip install --no-cache-dir -r requirements.txt
+# Install any needed packages specified in requirements.txt
+RUN pip install --trusted-host pypi.python.org -r requirements.txt
+
+# Install google cloud sdk (Debugging)
+# RUN apt-get -y update; apt-get -y install curl
+# RUN curl -sSL https://sdk.cloud.google.com | bash
+# ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
 
 # Run the web service on container startup. Here we use the gunicorn
 # webserver, with one worker process and 8 threads.

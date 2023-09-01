@@ -77,3 +77,4 @@ config_example.yml
 
 #secrets
 secrets/*
+src/secrets/*

@@ -13,6 +13,7 @@ import google_crc32c
 import yaml
 import google.auth
 
+
 def create_app():
     app = Flask(__name__)
 
@@ -58,12 +59,8 @@ class Eazybi(Resource):
     def get(self, filename):
         if os.path.isfile("secrets/" + str(filename) + "/" + str(filename) + ".yml"):
             cfg.set_file("secrets/" + str(filename) + "/" + str(filename) + ".yml")
-            result = self.metrics()
-            return result.to_json(orient="table")
         elif os.path.isfile("secrets/" + str(filename) + "/" + str(filename)):
             cfg.set_file("secrets/" + str(filename) + "/" + str(filename))
-            result = self.metrics()
-            return result.to_json(orient="table")
         elif project_id:
             yaml_string = access_secret_version(project_id, filename)
             yaml_data = yaml.load(yaml_string, Loader=yaml.FullLoader)
@@ -239,6 +236,6 @@ if __name__ == "__main__":
 
     with suppress(Exception):
         credentials, project_id = google.auth.default()
-    
+
     app = create_app()
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
