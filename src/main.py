@@ -13,6 +13,10 @@ import google_crc32c
 import yaml
 import google.auth
 
+cfg = confuse.Configuration("JiraMetricsEazybi", __name__)
+
+with suppress(Exception):
+    credentials, project_id = google.auth.default()
 
 def create_app():
     app = Flask(__name__)
@@ -232,10 +236,5 @@ class Hello(Resource):
 
 
 if __name__ == "__main__":
-    cfg = confuse.Configuration("JiraMetricsEazybi", __name__)
-
-    with suppress(Exception):
-        credentials, project_id = google.auth.default()
-
     app = create_app()
     app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
